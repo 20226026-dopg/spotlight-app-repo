@@ -1,7 +1,10 @@
 import { COLORS } from "@/constants/theme";
-import { ActivityIndicator, View } from "react-native";
+import { useAuth } from "@clerk/expo";
+import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 
 export function Loader() {
+  const { signOut } = useAuth();
+
   return (
     <View
       style={{
@@ -12,6 +15,12 @@ export function Loader() {
       }}
     >
       <ActivityIndicator size="large" color={COLORS.primary} />
+      <TouchableOpacity
+        onPress={() => signOut()}
+        style={{ marginTop: 40, padding: 12 }}
+      >
+        <Text style={{ color: COLORS.grey }}>Sign out</Text>
+      </TouchableOpacity>
     </View>
   );
 }

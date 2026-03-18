@@ -1,15 +1,22 @@
 import { COLORS } from "@/constants/theme";
 import { styles } from "@/styles/auth.styles";
-import { useSSO } from "@clerk/expo";
+import { useAuth, useSSO } from "@clerk/expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { View, Text, Image, TouchableOpacity } from "react-native";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
 export default function login() {
   const { startSSOFlow } = useSSO();
+  const { isSignedIn } = useAuth();
   const router = useRouter();
 
   const handleGoogleSignIn = async () => {
+    // Already signed in, just redirect
+    if (isSignedIn) {
+      router.replace("/(tabs)");
+      return;
+    }
+
     try {
       const { createdSessionId, setActive } = await startSSOFlow({
         strategy: "oauth_google",

@@ -23,17 +23,13 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
+          tabBarIcon: ({ size, color }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="bookmarks"
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bookmark" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="bookmark" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -47,9 +43,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="heart" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="heart" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
