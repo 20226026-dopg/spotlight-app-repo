@@ -23,6 +23,13 @@ export default function Index() {
 
   const posts = useQuery(api.posts.getFeedPosts, isAuthenticated ? {} : "skip");
 
+  // Debug logging
+  console.log("Auth state:", {
+    isAuthLoading,
+    isAuthenticated,
+    postsStatus: posts === undefined ? "loading" : `${posts.length} posts`,
+  });
+
   if (isAuthLoading || posts === undefined) return <Loader />;
   if (posts.length === 0) return <NoPostsFound />;
 

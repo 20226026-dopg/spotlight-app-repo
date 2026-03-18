@@ -1,9 +1,12 @@
 import { query } from "./_generated/server";
-import { getAuthenticatedUser } from "./users";
+import { getAuthenticatedUserOrNull } from "./users";
 
 export const getNotifications = query({
   handler: async (ctx) => {
-    const currentUser = await getAuthenticatedUser(ctx);
+    const currentUser = await getAuthenticatedUserOrNull(ctx);
+
+    // Return empty array if user is not found (not yet created in DB)
+    if (!currentUser) return [];
 
     const notifications = await ctx.db
       .query("notifications")
@@ -35,7 +38,7 @@ export const getNotifications = query({
           post,
           comment: comment?.content,
         };
-      })
+      }),
     );
 
     return notificationsWithInfo;

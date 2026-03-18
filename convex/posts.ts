@@ -1,8 +1,6 @@
-import { getNotifications } from "./notifications";
 import { v } from "convex/values";
-import { mutation, MutationCtx, query } from "./_generated/server";
-import { getAuthenticatedUser } from "./users";
-import { Id } from "./_generated/dataModel";
+import { mutation, query } from "./_generated/server";
+import { getAuthenticatedUser, getAuthenticatedUserOrNull } from "./users";
 
 export const generateUploadUrl = mutation(async (ctx) => {
   const identity = await ctx.auth.getUserIdentity();
@@ -43,7 +41,10 @@ export const createPost = mutation({
 
 export const getFeedPosts = query({
   handler: async (ctx) => {
-    const currentUser = await getAuthenticatedUser(ctx);
+    const currentUser = await getAuthenticatedUserOrNull(ctx);
+
+    // Return empty array if user is not found (not yet created in DB)
+    if (!currentUser) return [];
 
     // get all posts
     const posts = await ctx.db.query("posts").order("desc").collect();
@@ -57,14 +58,14 @@ export const getFeedPosts = query({
         const like = await ctx.db
           .query("likes")
           .withIndex("by_user_and_post", (q) =>
-            q.eq("userId", currentUser._id).eq("postId", post._id)
+            q.eq("userId", currentUser._id).eq("postId", post._id),
           )
           .first();
 
         const bookmark = await ctx.db
           .query("bookmarks")
           .withIndex("by_user_and_post", (q) =>
-            q.eq("userId", currentUser._id).eq("postId", post._id)
+            q.eq("userId", currentUser._id).eq("postId", post._id),
           )
           .first();
 
@@ -78,7 +79,7 @@ export const getFeedPosts = query({
           isLiked: !!like,
           isBookmarked: !!bookmark,
         };
-      })
+      }),
     );
 
     return postsWithInfo;
@@ -93,7 +94,7 @@ export const toggleLike = mutation({
     const existing = await ctx.db
       .query("likes")
       .withIndex("by_user_and_post", (q) =>
-        q.eq("userId", currentUser._id).eq("postId", args.postId)
+        q.eq("userId", currentUser._id).eq("postId", args.postId),
       )
       .first();
 
@@ -136,7 +137,8 @@ export const deletePost = mutation({
     if (!post) throw new Error("Post not found");
 
     // verify ownership
-    if (post.userId !== currentUser._id) throw new Error("Not authorized to delete this post");
+    if (post.userId !== currentUser._id)
+      throw new Error("Not authorized to delete this post");
 
     // delete associated likes
     const likes = await ctx.db
@@ -195,9 +197,12 @@ export const getPostsByUser = query({
     userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = args.userId ? await ctx.db.get(args.userId) : await getAuthenticatedUser(ctx);
+    const user = args.userId
+      ? await ctx.db.get(args.userId)
+      : await getAuthenticatedUserOrNull(ctx);
 
-    if (!user) throw new Error("User not found");
+    // Return empty array if user is not found
+    if (!user) return [];
 
     const posts = await ctx.db
       .query("posts")

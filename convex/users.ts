@@ -1,6 +1,38 @@
+import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
-import { v } from "convex/values";
+
+export const syncUser = mutation({
+  args: {
+    username: v.string(),
+    fullname: v.string(),
+    image: v.string(),
+    email: v.string(),
+    clerkId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (existingUser) return existingUser._id;
+
+    // Create user if doesn't exist
+    const userId = await ctx.db.insert("users", {
+      username: args.username,
+      fullname: args.fullname,
+      email: args.email,
+      image: args.image,
+      clerkId: args.clerkId,
+      followers: 0,
+      following: 0,
+      posts: 0,
+    });
+
+    return userId;
+  },
+});
 
 export const createUser = mutation({
   args: {
@@ -76,12 +108,24 @@ export async function getAuthenticatedUser(ctx: QueryCtx | MutationCtx) {
   return currentUser;
 }
 
+// Non-throwing version for queries - returns null if user not found
+export async function getAuthenticatedUserOrNull(ctx: QueryCtx | MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+
+  const currentUser = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+    .first();
+
+  return currentUser;
+}
+
 export const getUserProfile = query({
   args: { id: v.id("users") },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.id);
-    if (!user) throw new Error("User not found");
-
+    // Return null instead of throwing if user not found
     return user;
   },
 });
@@ -89,12 +133,15 @@ export const getUserProfile = query({
 export const isFollowing = query({
   args: { followingId: v.id("users") },
   handler: async (ctx, args) => {
-    const currentUser = await getAuthenticatedUser(ctx);
+    const currentUser = await getAuthenticatedUserOrNull(ctx);
+
+    // Return false if user is not found (not yet created in DB)
+    if (!currentUser) return false;
 
     const follow = await ctx.db
       .query("follows")
       .withIndex("by_both", (q) =>
-        q.eq("followerId", currentUser._id).eq("followingId", args.followingId)
+        q.eq("followerId", currentUser._id).eq("followingId", args.followingId),
       )
       .first();
 
@@ -110,7 +157,7 @@ export const toggleFollow = mutation({
     const existing = await ctx.db
       .query("follows")
       .withIndex("by_both", (q) =>
-        q.eq("followerId", currentUser._id).eq("followingId", args.followingId)
+        q.eq("followerId", currentUser._id).eq("followingId", args.followingId),
       )
       .first();
 
@@ -140,7 +187,7 @@ async function updateFollowCounts(
   ctx: MutationCtx,
   followerId: Id<"users">,
   followingId: Id<"users">,
-  isFollow: boolean
+  isFollow: boolean,
 ) {
   const follower = await ctx.db.get(followerId);
   const following = await ctx.db.get(followingId);
